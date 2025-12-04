@@ -1,6 +1,6 @@
 import { useState, useContext } from "react";
 import { AuthContext } from "../context/AuthContext";
-import Sidebar from "../components/Sidebar";
+import Navbar from "../components/Navbar";
 import DashboardView from "../components/DashboardView";
 import SettingsView from "../components/SettingsView";
 
@@ -37,14 +37,14 @@ const Home = () => {
 
   return (
     <div
-      className="flex min-h-screen"
+      className="min-h-screen"
       style={{ backgroundColor: "var(--background)" }}
     >
-      {/* Sidebar */}
-      <Sidebar activeMenu={activeMenu} setActiveMenu={setActiveMenu} />
+      {/* Navbar */}
+      <Navbar activeMenu={activeMenu} setActiveMenu={setActiveMenu} />
 
-      {/* Main Content - Offset for fixed sidebar */}
-      <div className="flex-1 ml-64">
+      {/* Main Content - Offset for fixed navbar */}
+      <div className="pt-16">
         {/* Dashboard View */}
         {activeMenu === "dashboard" && <DashboardView user={user} />}
 

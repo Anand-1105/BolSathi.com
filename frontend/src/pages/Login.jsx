@@ -152,6 +152,12 @@ const Login = () => {
             />
           </div>
 
+          <div className="flex justify-end">
+            <a href="/forgot-password" className="text-sm font-semibold hover:underline" style={{ color: "var(--primary)" }}>
+              Forgot Password?
+            </a>
+          </div>
+
           <button
             type="submit"
             disabled={loading}

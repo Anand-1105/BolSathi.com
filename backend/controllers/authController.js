@@ -197,9 +197,73 @@ const verifyLogin = async (req, res) => {
     }
 };
 
+// @desc    Forgot Password (Send OTP)
+// @route   POST /api/auth/forgot-password
+// @access  Public
+const forgotPassword = async (req, res) => {
+    const { email } = req.body;
+
+    try {
+        const user = await User.findOne({ email });
+        if (!user) {
+            return res.status(404).json({ success: false, error: 'User not found' });
+        }
+
+        const otp = generateOTP();
+        console.log(`[DEV ONLY] Reset OTP for ${email}: ${otp}`);
+
+        await Otp.create({ email, otp });
+
+        await sendEmail({
+            email,
+            subject: 'Reset Password OTP for BolSathi',
+            text: `Your OTP is ${otp}`,
+            html: `<p>Your OTP for resetting your password at BolSathi is <strong>${otp}</strong>. It expires in 10 minutes.</p>`
+        });
+
+        res.status(200).json({ success: true, message: 'OTP sent to your email' });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+};
+
+// @desc    Reset Password (Verify OTP & Update Password)
+// @route   POST /api/auth/reset-password
+// @access  Public
+const resetPassword = async (req, res) => {
+    const { email, otp, newPassword } = req.body;
+
+    try {
+        const otpRecord = await Otp.findOne({ email, otp });
+
+        if (!otpRecord) {
+            return res.status(400).json({ success: false, error: 'Invalid or expired OTP' });
+        }
+
+        const user = await User.findOne({ email });
+        if (!user) {
+            return res.status(404).json({ success: false, error: 'User not found' });
+        }
+
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+        user.password = hashedPassword;
+        await user.save();
+
+        await Otp.deleteMany({ email });
+
+        res.status(200).json({ success: true, message: 'Password reset successfully' });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+};
+
 module.exports = {
     signup,
     verifySignup,
     login,
-    verifyLogin
+    verifyLogin,
+    forgotPassword,
+    resetPassword
 };

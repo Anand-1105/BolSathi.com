@@ -2,6 +2,7 @@ const User = require('../models/User');
 const Otp = require('../models/Otp');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const sendEmail = require('../utils/sendEmail');
 
 const generateOTP = () => {
     return Math.floor(100000 + Math.random() * 900000).toString();
@@ -25,6 +26,14 @@ const signup = async (req, res) => {
 
         // Save OTP to DB
         await Otp.create({ email, otp });
+
+        // Send OTP via Email
+        await sendEmail({
+            email,
+            subject: 'Your Signup OTP for BolSathi',
+            text: `Your OTP is ${otp}`,
+            html: `<p>Your OTP for signing up at BolSathi is <strong>${otp}</strong>. It expires in 10 minutes.</p>`
+        });
 
         // Temporarily store user data? In this flow, we will return a success and let frontend call verify 
         // passing all data again OR temporarily store partial user.
@@ -81,8 +90,21 @@ const verifySignup = async (req, res) => {
         // Delete OTP
         await Otp.deleteMany({ email });
 
+        // Generate JWT
+        const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET || 'secret123', {
+            expiresIn: '30d'
+        });
+
         res.status(200).json({
             success: true,
+            token,
+            user: {
+                id: user._id,
+                name: user.name,
+                email: user.email,
+                phone: user.phone,
+                verifiedAt: user.verifiedAt
+            },
             message: 'Email verified successfully'
         });
 
@@ -109,6 +131,14 @@ const login = async (req, res) => {
             console.log(`[DEV ONLY] Login OTP for ${email}: ${otp}`);
             
             await Otp.create({ email, otp });
+
+            // Send OTP via Email
+            await sendEmail({
+                email,
+                subject: 'Your Login OTP for BolSathi',
+                text: `Your OTP is ${otp}`,
+                html: `<p>Your OTP for logging in at BolSathi is <strong>${otp}</strong>. It expires in 10 minutes.</p>`
+            });
 
             res.json({
                 success: true,

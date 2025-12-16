@@ -58,7 +58,7 @@ const LoginOTPVerification = ({ email, onBack, credentials }) => {
       if (/^\d{6}$/.test(otp)) {
         const result = await completeLogin(
           credentials.email,
-          credentials.password
+          otp
         );
         if (result.success) {
           navigate("/");

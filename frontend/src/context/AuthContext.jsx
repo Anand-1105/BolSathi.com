@@ -47,7 +47,15 @@ export const AuthProvider = ({ children }) => {
        const response = await axios.post("http://localhost:5000/api/auth/verify-signup", { email, otp });
 
        if (response.data.success) {
+            const { user, token } = response.data;
+            localStorage.setItem("user", JSON.stringify(user));
+            localStorage.setItem("authToken", token);
+            localStorage.setItem("loginTime", new Date().toISOString());
+            
+            setUser(user);
+            setIsAuthenticated(true);
             localStorage.removeItem("tempSignup");
+
             return { success: true, message: "Email verified successfully" };
        } else {
             return { success: false, error: response.data.error };

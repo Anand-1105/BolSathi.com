@@ -56,11 +56,11 @@ const OTPVerification = ({ email, signupData, onBack }) => {
 
       // For demo: accept any 6-digit code
       if (/^\d{6}$/.test(otp)) {
-        const result = await completeSignup(signupData);
+        const result = await completeSignup({ ...signupData, otp });
         if (result.success) {
-          navigate("/login", {
+          navigate("/", {
             state: {
-              message: "Email verified! Signup successful. Please login.",
+              message: "Email verified! Signup successful.",
             },
           });
         } else {

@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useContext } from "react";
+import { AuthContext } from "../context/AuthContext";
 import { Home, Layers, Languages, Info, Phone, ChevronDown, User, Menu } from "lucide-react";
 
 const navItems = [
@@ -12,7 +13,7 @@ const navItems = [
 export default function Navbar() {
   const [openMenu, setOpenMenu] = useState(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(true); // MOCK (make it real later)
+  const { user, isAuthenticated, logout } = useContext(AuthContext); 
   const [userMenuOpen, setUserMenuOpen] = useState(false);
 
   const menuRef = useRef();
@@ -77,7 +78,7 @@ export default function Navbar() {
       </ul>
 
       {/* Right Side Button / User */}
-      {!isLoggedIn ? (
+      {!isAuthenticated ? (
         <button
           onClick={() => (window.location.href = "/login")}
           className="hidden md:block bg-gradient-to-r from-blue-400 to-purple-500 text-white px-6 py-2 rounded-full font-semibold hover:scale-105 transition"
@@ -91,7 +92,7 @@ export default function Navbar() {
             onClick={() => setUserMenuOpen(!userMenuOpen)}
           >
             <User size={20} className="text-white" />
-            <span className="text-white">Manoj</span>
+            <span className="text-white">{user?.name || "User"}</span>
           </div>
 
           {userMenuOpen && (
@@ -110,7 +111,10 @@ export default function Navbar() {
               </p>
               <p
                 className="px-4 py-2 bg-linear-to-r from-blue-400 to-purple-500 text-white cursor-pointer"
-                onClick={() => (window.location.href = "/logout")}
+                onClick={() => {
+                   logout();
+                   window.location.href = "/login";
+                }}
               >
                 Logout
               </p>

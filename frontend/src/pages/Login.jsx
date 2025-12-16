@@ -48,11 +48,23 @@ const Login = () => {
 
     setLoading(true);
     try {
-      const result = await login(formData.email, formData.password);
-      if (result.success && result.needsOTP) {
-        setShowOTP(true);
-      } else if (result.success) {
-        navigate("/");
+      // Get or Generate Device ID
+      let deviceId = localStorage.getItem("deviceId");
+      if (!deviceId) {
+          // Robust fallback for device ID generation
+          deviceId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+          localStorage.setItem("deviceId", deviceId);
+      }
+
+      const result = await login(formData.email, formData.password, deviceId);
+      
+      if (result.success) {
+         if (result.needsOTP) {
+             setShowOTP(true);
+         } else {
+             // Trusted Device found - Direct Login
+             navigate("/"); 
+         }
       } else {
         setError(result.error || "Login failed");
       }
@@ -68,6 +80,7 @@ const Login = () => {
       <LoginOTPVerification
         email={formData.email}
         credentials={formData}
+        deviceId={localStorage.getItem("deviceId")}
         onBack={() => {
           setShowOTP(false);
           setError("");

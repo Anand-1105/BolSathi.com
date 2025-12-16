@@ -127,18 +127,61 @@ const login = async (req, res) => {
                  return res.status(401).json({ success: false, error: 'Account not verified. Please verify your email.' });
             }
 
+            // Trusted Device Logic
+            const { deviceId } = req.body;
+            let skipOTP = false;
+
+            if (deviceId && user.trustedDevices) {
+                const trustedDevice = user.trustedDevices.find(d => d.deviceId === deviceId);
+                if (trustedDevice) {
+                    const oneHour = 60 * 60 * 1000;
+                    if (Date.now() - new Date(trustedDevice.lastLogin).getTime() < oneHour) {
+                         skipOTP = true;
+                         
+                         // Update lastLogin time
+                         trustedDevice.lastLogin = Date.now();
+                         await user.save();
+                    }
+                }
+            }
+
+            if (skipOTP) {
+                const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET || 'secret123', {
+                    expiresIn: '30d'
+                });
+
+                return res.json({
+                    success: true,
+                    needsOTP: false,
+                    token,
+                    user: {
+                        id: user._id,
+                        name: user.name,
+                        email: user.email,
+                        phone: user.phone,
+                        verifiedAt: user.verifiedAt
+                    },
+                    message: 'Logged in successfully (Trusted Device)'
+                });
+            }
+
             const otp = generateOTP();
             console.log(`[DEV ONLY] Login OTP for ${email}: ${otp}`);
             
             await Otp.create({ email, otp });
 
-            // Send OTP via Email
-            await sendEmail({
-                email,
-                subject: 'Your Login OTP for BolSathi',
-                text: `Your OTP is ${otp}`,
-                html: `<p>Your OTP for logging in at BolSathi is <strong>${otp}</strong>. It expires in 10 minutes.</p>`
-            });
+            // Send OTP via Email (Non-blocking or Graceful Fail)
+            try {
+                await sendEmail({
+                    email,
+                    subject: 'Your Login OTP for BolSathi',
+                    text: `Your OTP is ${otp}`,
+                    html: `<p>Your OTP for logging in at BolSathi is <strong>${otp}</strong>. It expires in 10 minutes.</p>`
+                });
+            } catch (emailError) {
+                console.error("Failed to send login OTP email:", emailError.message);
+                // Continue execution to allow manual OTP entry (Dev mode)
+            }
 
             res.json({
                 success: true,
@@ -157,7 +200,7 @@ const login = async (req, res) => {
 // @route   POST /api/auth/verify-login
 // @access  Public
 const verifyLogin = async (req, res) => {
-    const { email, otp } = req.body;
+    const { email, otp, deviceId } = req.body;
 
     try {
         const otpRecord = await Otp.findOne({ email, otp });
@@ -169,6 +212,23 @@ const verifyLogin = async (req, res) => {
         const user = await User.findOne({ email });
 
         if (user) {
+            // Updated Trusted Device Logic
+            if (deviceId) {
+                const existingDeviceIndex = user.trustedDevices.findIndex(d => d.deviceId === deviceId);
+                const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+
+                if (existingDeviceIndex !== -1) {
+                    user.trustedDevices[existingDeviceIndex].lastLogin = Date.now();
+                } else {
+                    user.trustedDevices.push({
+                        deviceId,
+                        ip,
+                        lastLogin: Date.now()
+                    });
+                }
+                await user.save();
+            }
+
             // Delete OTP
             await Otp.deleteMany({ email });
              
